@@ -22,10 +22,10 @@ public class Transactions implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column
-	private Long id; // This should be the User Id
+	private Long transactionNumber; // This should be the Transaction Id This would be used to Identify or Search a Transaction
 
-//	@Column
-//	private long transactionNumber; // This would be used to Identify or Search a Transaction
+	@Column
+	private long userId; // This should be the User ID that we will get from User Microservice
 
 	@Column
 	private LocalDateTime transactionTime = LocalDateTime.now(); // The time at which the Transaction was made
@@ -36,21 +36,22 @@ public class Transactions implements Serializable {
 	@Column
 	private long transactionAmount; // Amount of money to Withdraw or Deposit
 
-	public Long getId() {
-		return id;
+
+	public Long getTransactionNumber() {
+		return transactionNumber;
 	}
 
-	public void setId(Long id) {
-		this.id = id;
+	public void setTransactionNumber(Long transactionNumber) {
+		this.transactionNumber = transactionNumber;
 	}
 
-//	public long getTransactionid() {
-//		return transactionid;
-//	}
-//
-//	public void setTransactionid(long transactionid) {
-//		this.transactionid = transactionid;
-//	}
+	public long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(long userId) {
+		this.userId = userId;
+	}
 
 	public LocalDateTime getTransactionTime() {
 		return transactionTime;
