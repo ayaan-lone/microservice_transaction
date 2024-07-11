@@ -1,4 +1,4 @@
-package com.microservice.transaction;
+package com.onlineBanking.transaction;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.SpringApplication;

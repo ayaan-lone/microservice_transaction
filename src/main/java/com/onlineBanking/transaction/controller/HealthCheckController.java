@@ -1,4 +1,4 @@
-package com.microservice.transaction.controller;
+package com.onlineBanking.transaction.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
