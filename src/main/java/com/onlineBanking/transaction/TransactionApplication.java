@@ -41,9 +41,13 @@ public class TransactionApplication {
 //	    return restTemplate;
 //	}
 	
-	@Bean
-    public WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
-    }
+//	@Bean
+//    public WebClient.Builder webClientBuilder() {
+//        return WebClient.builder();
+//    }
 
+	@Bean
+	public RestTemplate restTemplate() {
+		return new RestTemplate();
+	}
 }

@@ -24,15 +24,12 @@ import reactor.core.publisher.Mono;
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-//	private final RestTemplate restTemplate;
-	private final WebClient.Builder webClientBuilder;
+	private final RestTemplate restTemplate;
 
 	@Autowired
-	public TransactionServiceImpl(TransactionRepository transactionRepository, /*RestTemplate restTemplate,*/
-			WebClient.Builder webClientBuilder) {
+	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate) {
 		this.transactionRepository = transactionRepository;
-//		this.restTemplate = restTemplate;
-		this.webClientBuilder = webClientBuilder;
+		this.restTemplate = restTemplate;
 	}
 
 	@Value("${onlineBanking.account.url}")
@@ -47,20 +44,14 @@ public class TransactionServiceImpl implements TransactionService {
 		transaction.setDateTime(LocalDateTime.now());
 		transactionRepository.save(transaction);
 
-//		HttpHeaders headers = new HttpHeaders();
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
 //		headers.set("Content-Type", "application/json");	
-//		
-//		HttpEntity<TransactionDetailsDto> requestEntity = new HttpEntity<>(transactionDetailsDto, headers);
-//		
-//		ResponseEntity<String> response = restTemplate.exchange(accountBalanceUpdateUrl, HttpMethod.PATCH, requestEntity, String.class);
+		
+		HttpEntity<TransactionDetailsDto> requestEntity = new HttpEntity<>(transactionDetailsDto, headers);
+		
+		ResponseEntity<String> response = restTemplate.exchange(accountBalanceUpdateUrl, HttpMethod.POST, requestEntity, String.class);
 
-		Mono<String> response = webClientBuilder.build().patch().uri(uriBuilder -> uriBuilder.path(accountBalanceUpdateUrl)
-                .queryParam("userId", transactionDetailsDto.getUserId())
-                .queryParam("amount", transactionDetailsDto.getAmount())
-                .queryParam("transactionType", transactionDetailsDto.getTransactionType())
-                .build())
-				.contentType(MediaType.APPLICATION_JSON).bodyValue(transactionDetailsDto).retrieve()
-				.bodyToMono(String.class);
 
 		return response.toString();
 	}
