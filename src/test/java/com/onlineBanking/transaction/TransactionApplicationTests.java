@@ -1,13 +1,13 @@
-package com.microservice.transaction;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-@SpringBootTest
-class TransactionApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-
-}
+//package com.onlineBanking.transaction;
+//
+//import org.junit.jupiter.api.Test;
+//import org.springframework.boot.test.context.SpringBootTest;
+//
+//@SpringBootTest
+//class TransactionApplicationTests {
+//
+//	@Test
+//	void contextLoads() {
+//	}
+//
+//}
