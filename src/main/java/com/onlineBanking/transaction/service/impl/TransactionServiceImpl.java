@@ -20,6 +20,7 @@ import com.onlineBanking.transaction.dao.TransactionRepository;
 import com.onlineBanking.transaction.entity.Transaction;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
 import com.onlineBanking.transaction.request.TransactionDetailsDto;
+import com.onlineBanking.transaction.response.TransactionResponseDto;
 import com.onlineBanking.transaction.service.TransactionService;
 
 @Service
@@ -65,21 +66,56 @@ public class TransactionServiceImpl implements TransactionService {
 		}
 		return optionalTransaction.get();
 	}
-
-	@Override
-	public List<Transaction> getStatement(Long userId) throws TransactionApplicationException {
-		List<Transaction> transaction = isUserPersist(userId);
-		return transaction;
+	
+	// This function converts the transaction into transaction response dto
+	private List<TransactionResponseDto> transactionToResponseDto(List<Transaction> transactionList){
+		List<TransactionResponseDto> transactionResponse = transactionList.stream().map(transaction -> {
+			TransactionResponseDto transactionResponseDto = new TransactionResponseDto();
+			transactionResponseDto.setAmount(transaction.getAmount());
+			transactionResponseDto.setTransactionType(transaction.getTransactionType());
+			transactionResponseDto.setDateTime(transaction.getDateTime());
+			return transactionResponseDto;
+		}).collect(Collectors.toList());
+		return transactionResponse;
 	}
 
 	@Override
-	public List<Transaction> getMonthlyStatement(Long userId, int monthId, int year)
+	public List<TransactionResponseDto> getStatement(Long userId) throws TransactionApplicationException {
+		List<Transaction> transactionList = isUserPersist(userId);
+		return transactionToResponseDto(transactionList);
+	}
+
+	@Override
+	public List<TransactionResponseDto> getMonthlyStatement(Long userId, int monthId, int year)
 			throws TransactionApplicationException {
 		List<Transaction> transactionList = isUserPersist(userId);
 		List<Transaction> filteredTransaction = transactionList.stream().filter(transaction -> {
 			return transaction.getDateTime().getMonthValue() == monthId && transaction.getDateTime().getYear() == year;
 		}).collect(Collectors.toList());
-		return filteredTransaction;
+		return transactionToResponseDto(filteredTransaction);
+	}
+	
+	@Override
+	public List<TransactionResponseDto> getQuaterlyStatement(Long userId, int quater, int year) throws TransactionApplicationException {
+		List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> filteredTransaction = transactionList.stream().filter(transaction -> {
+			return getQuater(transaction.getDateTime()) == quater && transaction.getDateTime().getYear() == year;
+		}).collect(Collectors.toList());
+		return transactionToResponseDto(filteredTransaction);
+	}
+	
+	private static int getQuater(LocalDateTime date) {
+		int month = date.getMonthValue();
+		return (month - 1)/3 + 1;
+	}
+
+	@Override
+	public List<TransactionResponseDto> getYearlyStatement(Long userId, int year) throws TransactionApplicationException {
+		List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> filteredTransaction = transactionList.stream().filter(transaction -> {
+			return transaction.getDateTime().getYear() == year;
+		}).collect(Collectors.toList());
+		return transactionToResponseDto(filteredTransaction);
 	}
 
 }
