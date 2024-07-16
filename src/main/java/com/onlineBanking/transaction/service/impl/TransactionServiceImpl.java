@@ -33,9 +33,9 @@ public class TransactionServiceImpl implements TransactionService {
 	}
 
 	@Value("${onlineBanking.account.url}")
-	private String accountBalanceUpdateUrl;
+	public String accountBalanceUpdateUrl;
 
-	@Override
+	@Override 
 	public String createUserTransactions(TransactionDetailsDto transactionDetailsDto) {
 		Transaction transaction = new Transaction();
 		transaction.setUserId(transactionDetailsDto.getUserId());
