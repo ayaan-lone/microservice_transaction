@@ -1,7 +1,5 @@
 package com.onlineBanking.transaction.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,10 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.onlineBanking.transaction.entity.Transaction;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
 import com.onlineBanking.transaction.request.TransactionDetailsDto;
-import com.onlineBanking.transaction.response.TransactionResponseDto;
+import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.service.TransactionService;
 
 @RestController
@@ -35,29 +32,41 @@ public class TransactionController {
 	}
 
 	@GetMapping("/statement/{userId}")
-	ResponseEntity<List<TransactionResponseDto>> getStatement(@PathVariable Long userId) throws TransactionApplicationException {
-		List<TransactionResponseDto> response = transactionService.getStatement(userId);
+	ResponseEntity<TransactionPaginationResponse> getStatement(
+			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId)
+			throws TransactionApplicationException {
+		TransactionPaginationResponse response = transactionService.getStatement(pageNumber, pageSize, userId);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
 	@GetMapping("/monthly-statement/{userId}/{monthId}/{year}")
-	ResponseEntity<List<TransactionResponseDto>> getMonthlyStatement(@PathVariable Long userId, @PathVariable int monthId,
-			@PathVariable int year) throws TransactionApplicationException {
-		List<TransactionResponseDto> response = transactionService.getMonthlyStatement(userId, monthId, year);
+	ResponseEntity<TransactionPaginationResponse> getMonthlyStatement(
+			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
+			@PathVariable int monthId, @PathVariable int year) throws TransactionApplicationException {
+		TransactionPaginationResponse response = transactionService.getMonthlyStatement(pageNumber, pageSize, userId,
+				monthId, year);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
 	@GetMapping("/quaterly-statement/{userId}/{quater}/{year}")
-	ResponseEntity<List<TransactionResponseDto>> getQuaterlyStatement(@PathVariable Long userId, @PathVariable int quater,
-			@PathVariable int year) throws TransactionApplicationException {
-		List<TransactionResponseDto> response = transactionService.getQuaterlyStatement(userId, quater, year);
+	ResponseEntity<TransactionPaginationResponse> getQuaterlyStatement(
+			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
+			@PathVariable int quater, @PathVariable int year) throws TransactionApplicationException {
+		TransactionPaginationResponse response = transactionService.getQuaterlyStatement(pageNumber, pageSize, userId,
+				quater, year);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
 	@GetMapping("/yearly-statement/{userId}/{year}")
-	ResponseEntity<List<TransactionResponseDto>> getYearlyStatement(@PathVariable Long userId, @PathVariable int year)
-			throws TransactionApplicationException {
-		List<TransactionResponseDto> response = transactionService.getYearlyStatement(userId, year);
+	ResponseEntity<TransactionPaginationResponse> getYearlyStatement(
+			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
+			@PathVariable int year) throws TransactionApplicationException {
+		TransactionPaginationResponse response = transactionService.getYearlyStatement(pageNumber, pageSize, userId,
+				year);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
