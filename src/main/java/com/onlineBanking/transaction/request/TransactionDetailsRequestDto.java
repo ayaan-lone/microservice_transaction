@@ -1,14 +1,20 @@
-package com.onlineBanking.transaction.response;
-
-import java.time.LocalDateTime;
+package com.onlineBanking.transaction.request;
 
 import com.onlineBanking.transaction.entity.TransactionType;
 
-public class TransactionResponseDto {
+public class TransactionDetailsRequestDto {
 
+	private long userId;
 	private double amount;
 	private TransactionType transactionType;
-	private LocalDateTime dateTime;
+
+	public long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(long userId) {
+		this.userId = userId;
+	}
 
 	public double getAmount() {
 		return amount;
@@ -23,15 +29,7 @@ public class TransactionResponseDto {
 	}
 
 	public void setTransactionType(TransactionType transactionType) {
-		this.transactionType = transactionType;
-	}
-
-	public LocalDateTime getDateTime() {
-		return dateTime;
-	}
-
-	public void setDateTime(LocalDateTime dateTime) {
-		this.dateTime = dateTime;
+		this.transactionType = TransactionType.valueOf(transactionType.name().toUpperCase());
 	}
 
 }

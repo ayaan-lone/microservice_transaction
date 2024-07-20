@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.onlineBanking.transaction.exception.DateRangeException;
+import com.onlineBanking.transaction.exception.InsufficientFundsException;
+import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
-import com.onlineBanking.transaction.request.TransactionDetailsDto;
+import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.service.TransactionService;
 
@@ -26,8 +29,9 @@ public class TransactionController {
 	}
 
 	@PostMapping("/transaction")
-	ResponseEntity<String> createTransactionDetails(@RequestBody TransactionDetailsDto transactionDetailsDto) {
-		String response = transactionService.createUserTransactions(transactionDetailsDto);
+	ResponseEntity<String> transactionDetails(@RequestBody TransactionDetailsRequestDto transactionDetailsDto)
+			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+		String response = transactionService.transactionDetails(transactionDetailsDto);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
@@ -40,23 +44,23 @@ public class TransactionController {
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/monthly-statement/{userId}/{monthId}/{year}")
+	@GetMapping("/monthly-statement/{userId}/{month}")
 	ResponseEntity<TransactionPaginationResponse> getMonthlyStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
-			@PathVariable int monthId, @PathVariable int year) throws TransactionApplicationException {
+			@PathVariable String month) throws TransactionApplicationException, DateRangeException {
 		TransactionPaginationResponse response = transactionService.getMonthlyStatement(pageNumber, pageSize, userId,
-				monthId, year);
+				month);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/quaterly-statement/{userId}/{quater}/{year}")
+	@GetMapping("/quaterly-statement/{userId}/{quater}")
 	ResponseEntity<TransactionPaginationResponse> getQuaterlyStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
-			@PathVariable int quater, @PathVariable int year) throws TransactionApplicationException {
+			@PathVariable int quater) throws TransactionApplicationException, DateRangeException {
 		TransactionPaginationResponse response = transactionService.getQuaterlyStatement(pageNumber, pageSize, userId,
-				quater, year);
+				quater);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
@@ -64,7 +68,7 @@ public class TransactionController {
 	ResponseEntity<TransactionPaginationResponse> getYearlyStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, @PathVariable Long userId,
-			@PathVariable int year) throws TransactionApplicationException {
+			@PathVariable int year) throws TransactionApplicationException, DateRangeException {
 		TransactionPaginationResponse response = transactionService.getYearlyStatement(pageNumber, pageSize, userId,
 				year);
 		return ResponseEntity.status(HttpStatus.OK).body(response);

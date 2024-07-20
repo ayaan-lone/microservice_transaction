@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,9 +22,10 @@ public class Transaction {
 	@Column
 	private long userId;
 	@Column
-	private long amount;
+	private double amount;
+	@Enumerated(EnumType.STRING)
 	@Column
-	private String transactionType;
+	private TransactionType transactionType;
 	@Column
 	private LocalDateTime dateTime;
 
@@ -42,19 +45,19 @@ public class Transaction {
 		this.userId = userId;
 	}
 
-	public long getAmount() {
+	public double getAmount() {
 		return amount;
 	}
 
-	public void setAmount(long amount) {
+	public void setAmount(double amount) {
 		this.amount = amount;
 	}
 
-	public String getTransactionType() {
+	public TransactionType getTransactionType() {
 		return transactionType;
 	}
 
-	public void setTransactionType(String transactionType) {
+	public void setTransactionType(TransactionType transactionType) {
 		this.transactionType = transactionType;
 	}
 
