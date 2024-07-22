@@ -62,8 +62,14 @@ public class TransactionServiceImpl implements TransactionService {
 	// Function to handle all the debit transactions
 	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws InsufficientFundsException {
+		
+		System.out.println("This is the userId: "+transactionDetailsRequestDto.getUserId());
+		System.out.println("This again is the userId: "+transactionDetailsRequestDto.getUserId());
+		
 		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
-
+		
+		
+		System.out.println("This is the Balance: "+balance);
 		if (balance < transactionDetailsRequestDto.getAmount()) {
 			throw new InsufficientFundsException();
 		}
