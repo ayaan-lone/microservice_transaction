@@ -14,32 +14,34 @@ import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 
 @Component
 public class AccountClientHandler {
-	
+
 	private final RestTemplate restTemplate;
-	
+
 	@Value("${onlineBanking.account.url}")
 	private String accountUrl;
 
 	@Autowired
 	public AccountClientHandler(RestTemplate restTemplate) {
 		this.restTemplate = restTemplate;
-	}	
-	
+	}
+
 	public String updateBalance(TransactionDetailsRequestDto transactionDetailsRequestDto) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		
-		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto, headers);
 
-		ResponseEntity<String> response = restTemplate.exchange(accountUrl+"/update-balance", HttpMethod.POST, requestEntity,
-				String.class);
-		
+		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto,
+				headers);
+
+		ResponseEntity<String> response = restTemplate.exchange(accountUrl + "/update-balance", HttpMethod.POST,
+				requestEntity, String.class);
+
 		return response.getBody();
 	}
-	
+
 	public Double getBalance(Long userId) {
-		ResponseEntity<Double> balance = restTemplate.exchange(accountUrl + "/balance", HttpMethod.GET, null,
-				Double.class);
-		return balance.getBody();
+	    String url = accountUrl + "/balance?userId=" + userId; 
+	    ResponseEntity<Double> response = restTemplate.exchange(url, HttpMethod.GET, null, Double.class);
+	    return response.getBody();
 	}
+
 }
