@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.client.AccountClientHandler;
 import com.onlineBanking.transaction.client.UserClientHandler;
@@ -32,15 +31,14 @@ import com.onlineBanking.transaction.util.ConstantUtils;
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-	private final RestTemplate restTemplate;
+	
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
 
 	@Autowired
-	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate,
+	public TransactionServiceImpl(TransactionRepository transactionRepository,
 			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler) {
 		this.transactionRepository = transactionRepository;
-		this.restTemplate = restTemplate;
 		this.accountClientHandler = accountClientHandler;
 		this.userClientHandler = userClientHandler;
 	}
