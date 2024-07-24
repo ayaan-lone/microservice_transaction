@@ -24,4 +24,6 @@ public interface TransactionService {
 	TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year,
 			TransactionType transactionType) throws TransactionApplicationException, DateRangeException;
 
+	String handleCardTransaction(long userId, long cardNumber, double amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
+
 }

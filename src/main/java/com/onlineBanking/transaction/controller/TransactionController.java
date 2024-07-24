@@ -82,6 +82,15 @@ public class TransactionController {
 	    TransactionPaginationResponse response = transactionService.getYearlyStatement(pageNumber, pageSize, userId, year, transactionType);
 	    return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
+	
+	@PostMapping("/card-transaction")
+	public ResponseEntity<String> handleCardTransaction(@RequestParam(name = "userId", required = true) long userId,
+			@RequestParam(name = "cardNumber", required = true) long cardNumber,
+			@RequestParam(name = "amount", required = true) long amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+
+		String response = transactionService.handleCardTransaction(userId, cardNumber, amount);
+		return ResponseEntity.ok(response);
+	}
 
 
 }

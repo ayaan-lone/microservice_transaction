@@ -1,7 +1,6 @@
 package com.onlineBanking.transaction.service.impl;
 
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.time.Year;
 import java.util.Arrays;
 import java.util.List;
@@ -14,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.client.AccountClientHandler;
+import com.onlineBanking.transaction.client.CardClientHandler;
 import com.onlineBanking.transaction.client.UserClientHandler;
 import com.onlineBanking.transaction.dao.TransactionRepository;
+import com.onlineBanking.transaction.entity.CardType;
 import com.onlineBanking.transaction.entity.MonthEnum;
 import com.onlineBanking.transaction.entity.Transaction;
 import com.onlineBanking.transaction.entity.TransactionType;
@@ -36,14 +37,16 @@ public class TransactionServiceImpl implements TransactionService {
 	private final RestTemplate restTemplate;
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
+	private final CardClientHandler cardClientHandler;
 
 	@Autowired
 	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate,
-			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler) {
+			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,CardClientHandler cardClientHandler) {
 		this.transactionRepository = transactionRepository;
 		this.restTemplate = restTemplate;
 		this.accountClientHandler = accountClientHandler;
 		this.userClientHandler = userClientHandler;
+		this.cardClientHandler = cardClientHandler;
 	}
 
 	
@@ -64,13 +67,10 @@ public class TransactionServiceImpl implements TransactionService {
 	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws InsufficientFundsException {
 		
-		System.out.println("This is the userId: "+transactionDetailsRequestDto.getUserId());
-		System.out.println("This again is the userId: "+transactionDetailsRequestDto.getUserId());
 		
 		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
 		
 		
-		System.out.println("This is the Balance: "+balance);
 		if (balance < transactionDetailsRequestDto.getAmount()) {
 			throw new InsufficientFundsException();
 		}
@@ -140,6 +140,14 @@ public class TransactionServiceImpl implements TransactionService {
 
 		return response + " and " + transactionResponse;
 	}
+
+       	
+	
+	
+	
+	
+	
+	
 
 	// Function to check whether the transaction is present or not
 	private List<Transaction> isUserPersist(Long userId) throws TransactionApplicationException {
@@ -217,21 +225,6 @@ public class TransactionServiceImpl implements TransactionService {
 	}
 
 
-
-	// Function to convert Month Name to Month id
-	private int convertMonthNameToId(String month) throws DateRangeException {
-		// Check whether month name is valid or not
-		
-		month = month.toUpperCase();
-		List<String> validMonthName = Arrays.stream(Month.values()).map(Enum::name).map(String::toUpperCase)
-				.collect(Collectors.toList());
-		if (!validMonthName.contains(month)) {
-			throw new DateRangeException("Month provided: " + month + " is not a valid month");
-		}
-
-		return Month.valueOf(month).getValue();
-	}
-	
 
 	// Function to get user's monthly statements
 	@Override
@@ -384,6 +377,77 @@ public class TransactionServiceImpl implements TransactionService {
 	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
 	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
+	
+	
+	// CARD
+	
+	
+	
+	
+	
+	@Override
+	public String handleCardTransaction(long userId, long cardNumber, double amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+	    // Retrieve the cardType using card number
+	    CardType cardTypeEnum = cardClientHandler.fetchCardType(userId, cardNumber);
+	    System.out.println("this is the card type : "+cardTypeEnum);
+	    // Handle transaction based on card type
+	    
+	    if (cardTypeEnum == CardType.DEBIT_CARD) {
+	        return handleDebitCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+	    } 
+        if (cardTypeEnum == CardType.CREDIT_CARD) {
+            return handleCreditCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+        }
+
+
+
+	       
+
+	    throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_CARD_TYPE);
+	}
+
+
+
+
+
+	public String handleDebitCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double  amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+        // Prepare TransactionDetailsRequestDto for Debit Card Transaction
+
+        TransactionDetailsRequestDto transactionRequestDto = new TransactionDetailsRequestDto();
+        transactionRequestDto.setUserId(userId);
+        transactionRequestDto.setAmount(amount);
+        transactionRequestDto.setTransactionType(TransactionType.DEBIT);
+        String response = transactionDetails(transactionRequestDto);
+
+        // Check if the response is successful and handle it accordingly
+        if (response != null) {
+            return response;
+        }
+        
+	
+
+
+   
+        throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.TRANSACTION_FAILED);
+    }
+
+//
+
+	private String handleCreditCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
+            throws TransactionApplicationException, InsufficientFundsException {
+
+        double balance = cardClientHandler.fetchCardBalance(userId, cardNumber);
+        
+
+        // Check if there is sufficient balance on the card
+        if (balance < amount) {
+            throw new InsufficientFundsException();
+        }
+        
+        return cardClientHandler.updateCardBalance(userId, cardNumber, amount);
+    }
+
+
 
 
 }
