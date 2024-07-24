@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.entity.CardType;
+import com.onlineBanking.transaction.entity.TransactionType;
 
 @Component
 public class CardClientHandler {
@@ -39,9 +40,9 @@ public class CardClientHandler {
 		return response.getBody();
 	}
 	
-	public String updateCardBalance(long userId, long cardNumber, double amount) {
+	public String updateCardBalance(long userId, long cardNumber, double amount, TransactionType transactionType) {
 		
-		String url = cardServiceUrl + "update-balance?userId=" + userId + "&cardNumber=" + cardNumber + "&amount="+amount;
+		String url = cardServiceUrl + "update-balance?userId=" + userId + "&cardNumber=" + cardNumber + "&amount="+amount + "&transactionType=" + transactionType;
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);

@@ -24,6 +24,7 @@ import com.onlineBanking.transaction.exception.DateRangeException;
 import com.onlineBanking.transaction.exception.InsufficientFundsException;
 import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
+import com.onlineBanking.transaction.request.TopUpCreditCardRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.response.TransactionResponseDto;
@@ -34,23 +35,20 @@ import com.onlineBanking.transaction.util.ConstantUtils;
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-	private final RestTemplate restTemplate;
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
 	private final CardClientHandler cardClientHandler;
 
 	@Autowired
-	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate,
-			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,CardClientHandler cardClientHandler) {
+	public TransactionServiceImpl(TransactionRepository transactionRepository,
+			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,
+			CardClientHandler cardClientHandler) {
 		this.transactionRepository = transactionRepository;
-		this.restTemplate = restTemplate;
 		this.accountClientHandler = accountClientHandler;
 		this.userClientHandler = userClientHandler;
 		this.cardClientHandler = cardClientHandler;
 	}
 
-	
-	
 	// Method to check whether the transaction type is valid or not
 	private static void isValidTransaction(TransactionType transaction) throws TransactionApplicationException {
 		List<TransactionType> validTransactions = Arrays.stream(TransactionType.values()).collect(Collectors.toList());
@@ -59,37 +57,25 @@ public class TransactionServiceImpl implements TransactionService {
 			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_TRANSACTION);
 		}
 	}
-	
-	
-	
 
 	// Function to handle all the debit transactions
 	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws InsufficientFundsException {
-		
-		
+
 		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
-		
-		
+
 		if (balance < transactionDetailsRequestDto.getAmount()) {
 			throw new InsufficientFundsException();
 		}
 
 		return accountClientHandler.updateBalance(transactionDetailsRequestDto);
 	}
-	
-	
-	
-	
-	
 
 	// Function to handle all the credit transactions
 	private String handleCreditTransactions(TransactionDetailsRequestDto transaDetailsRequestDto) {
 		return accountClientHandler.updateBalance(transaDetailsRequestDto);
 	}
 
-	
-	
 	// Function to store the transactions in db
 	private String createUserTransactions(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws TransactionApplicationException {
@@ -106,9 +92,6 @@ public class TransactionServiceImpl implements TransactionService {
 
 		return "Transaction is saved in db";
 	}
-	
-	
-	
 
 	// Function to validate that the amount should not be equal to zero
 	private void checkAmount(Double amount) throws InvalidAmountException {
@@ -141,22 +124,12 @@ public class TransactionServiceImpl implements TransactionService {
 		return response + " and " + transactionResponse;
 	}
 
-       	
-	
-	
-	
-	
-	
-	
-
 	// Function to check whether the transaction is present or not
 	private List<Transaction> isUserPersist(Long userId) throws TransactionApplicationException {
 
 		Optional<List<Transaction>> optionalTransaction = transactionRepository.findByUserId(userId);
 		return optionalTransaction.get();
 	}
-	
-	
 
 	// This function converts the transaction into transaction response dto
 	private List<TransactionResponseDto> transactionToResponseDto(List<Transaction> transactionList) {
@@ -169,8 +142,6 @@ public class TransactionServiceImpl implements TransactionService {
 		}).collect(Collectors.toList());
 	}
 
-	
-	
 	// This function converts transactionResponseDto to PaginationResponse
 	private TransactionPaginationResponse transactionResponseToPagination(
 			List<TransactionResponseDto> transactionResponse, int pageNumber, int pageSize) {
@@ -192,262 +163,266 @@ public class TransactionServiceImpl implements TransactionService {
 	}
 
 	@Override
-	public TransactionPaginationResponse getStatement(int pageNumber, int pageSize, TransactionType transactionType, Long userId)
-	        throws TransactionApplicationException {
+	public TransactionPaginationResponse getStatement(int pageNumber, int pageSize, TransactionType transactionType,
+			Long userId) throws TransactionApplicationException {
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    if (transactionList.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
-	    System.out.println("Transaction Type is :"+transactionType);
-	    
-	    
-	    // Filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        transactionList = transactionList.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		if (transactionList.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
+		System.out.println("Transaction Type is :" + transactionType);
 
-	    if (transactionList.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		// Filter transactions based on the transactionType
+		if (transactionType != null) {
+			transactionList = transactionList.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(transactionList);
+		if (transactionList.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(transactionList);
+
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
-
-
 
 	// Function to get user's monthly statements
 	@Override
-	public TransactionPaginationResponse getMonthlyStatement(int pageNumber, int pageSize, Long userId, MonthEnum month, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    
-	    System.out.println("Monthly Statement API called \n");
+	public TransactionPaginationResponse getMonthlyStatement(int pageNumber, int pageSize, Long userId, MonthEnum month,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		System.out.println("Monthly Statement API called \n");
 
-	    int monthId = month.getValue();
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // If month provided is in greater than the current month throw this exception
-	    if (monthId > LocalDateTime.now().getMonthValue()) {
-	        throw new DateRangeException(ConstantUtils.INVALID_MONTH);
-	    }
+		int monthId = month.getValue();
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		// If month provided is in greater than the current month throw this exception
+		if (monthId > LocalDateTime.now().getMonthValue()) {
+			throw new DateRangeException(ConstantUtils.INVALID_MONTH);
+		}
 
-	    // Filter transactions by month and year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> transaction.getDateTime().getMonthValue() == monthId
-	                    && transaction.getDateTime().getYear() == Year.now().getValue())
-	            .collect(Collectors.toList());
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    System.out.println("Filtered Monthly Transaction: " + filteredTransaction);
+		// Filter transactions by month and year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> transaction.getDateTime().getMonthValue() == monthId
+						&& transaction.getDateTime().getYear() == Year.now().getValue())
+				.collect(Collectors.toList());
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		System.out.println("Filtered Monthly Transaction: " + filteredTransaction);
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
+
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
-
-	
-	
-	
-	
 	// Function to return the quarter of the year if the date is given
 	private static int getQuarter(LocalDateTime date) {
 		int month = date.getMonthValue();
 		return (month - 1) / 3 + 1;
 	}
 
-	
-	
 	// Function to get user's quarterly statements
 	@Override
-	public TransactionPaginationResponse getQuaterlyStatement(int pageNumber, int pageSize, Long userId, int quarter, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    System.out.println("Quarterly Statement API called \n");
+	public TransactionPaginationResponse getQuaterlyStatement(int pageNumber, int pageSize, Long userId, int quarter,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
+		System.out.println("Quarterly Statement API called \n");
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // Check whether the quarter is greater than the current quarter
-	    if (quarter > getQuarter(LocalDateTime.now())) {
-	        throw new DateRangeException("Provided quarter: " + quarter + " is greater than the current quarter");
-	    }
+		// Check whether the quarter is greater than the current quarter
+		if (quarter > getQuarter(LocalDateTime.now())) {
+			throw new DateRangeException("Provided quarter: " + quarter + " is greater than the current quarter");
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    // Filter transactions by quarter and year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> getQuarter(transaction.getDateTime()) == quarter
-	                    && transaction.getDateTime().getYear() == Year.now().getValue())
-	            .collect(Collectors.toList());
+		// Filter transactions by quarter and year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> getQuarter(transaction.getDateTime()) == quarter
+						&& transaction.getDateTime().getYear() == Year.now().getValue())
+				.collect(Collectors.toList());
 
-	    System.out.println("Filtered Quarterly Transaction: " + filteredTransaction);
+		System.out.println("Filtered Quarterly Transaction: " + filteredTransaction);
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
-	
-	
-	
-	
 	@Override
-	public TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    System.out.println("Yearly Statement API called \n");
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+	public TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
+		System.out.println("Yearly Statement API called \n");
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // Check whether the given year is greater than the current year
-	    if (year > LocalDateTime.now().getYear()) {
-	        throw new DateRangeException(ConstantUtils.INVALID_YEAR);
-	    }
+		// Check whether the given year is greater than the current year
+		if (year > LocalDateTime.now().getYear()) {
+			throw new DateRangeException(ConstantUtils.INVALID_YEAR);
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    // Filter transactions by year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> transaction.getDateTime().getYear() == year)
-	            .collect(Collectors.toList());
+		// Filter transactions by year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> transaction.getDateTime().getYear() == year).collect(Collectors.toList());
 
-	    System.out.println("Filtered Yearly List : " + filteredTransaction);
+		System.out.println("Filtered Yearly List : " + filteredTransaction);
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
-	
-	
+
 	// CARD
-	
-	
-	
-	
-	
+
 	@Override
-	public String handleCardTransaction(long userId, long cardNumber, double amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
-	    // Retrieve the cardType using card number
-	    CardType cardTypeEnum = cardClientHandler.fetchCardType(userId, cardNumber);
-	    System.out.println("this is the card type : "+cardTypeEnum);
-	    // Handle transaction based on card type
-	    
-	    if (cardTypeEnum == CardType.DEBIT_CARD) {
-	        return handleDebitCardTransaction(userId, cardNumber, cardTypeEnum, amount);
-	    } 
-        if (cardTypeEnum == CardType.CREDIT_CARD) {
-            return handleCreditCardTransaction(userId, cardNumber, cardTypeEnum, amount);
-        }
+	public String handleCardTransaction(long userId, long cardNumber, double amount)
+			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+		// Add a check to verify the user
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
 
+		// Retrieve the cardType using card number
+		CardType cardTypeEnum = cardClientHandler.fetchCardType(userId, cardNumber);
+		System.out.println("this is the card type : " + cardTypeEnum);
+		// Handle transaction based on card type
 
+		if (cardTypeEnum == CardType.DEBIT_CARD) {
+			return handleDebitCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+		}
+		if (cardTypeEnum == CardType.CREDIT_CARD) {
+			return handleCreditCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+		}
 
-	       
-
-	    throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_CARD_TYPE);
+		throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_CARD_TYPE);
 	}
 
+	public String handleDebitCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
+			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+		// Prepare TransactionDetailsRequestDto for Debit Card Transaction
 
+		TransactionDetailsRequestDto transactionRequestDto = new TransactionDetailsRequestDto();
+		transactionRequestDto.setUserId(userId);
+		transactionRequestDto.setAmount(amount);
+		transactionRequestDto.setTransactionType(TransactionType.DEBIT);
+		String response = transactionDetails(transactionRequestDto);
 
+		// Check if the response is successful and handle it accordingly
+		if (response != null) {
+			return response;
+		}
 
-
-	public String handleDebitCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double  amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
-        // Prepare TransactionDetailsRequestDto for Debit Card Transaction
-
-        TransactionDetailsRequestDto transactionRequestDto = new TransactionDetailsRequestDto();
-        transactionRequestDto.setUserId(userId);
-        transactionRequestDto.setAmount(amount);
-        transactionRequestDto.setTransactionType(TransactionType.DEBIT);
-        String response = transactionDetails(transactionRequestDto);
-
-        // Check if the response is successful and handle it accordingly
-        if (response != null) {
-            return response;
-        }
-        
-	
-
-
-   
-        throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.TRANSACTION_FAILED);
-    }
+		throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.TRANSACTION_FAILED);
+	}
 
 //
 
 	private String handleCreditCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
-            throws TransactionApplicationException, InsufficientFundsException {
+			throws TransactionApplicationException, InsufficientFundsException {
 
-        double balance = cardClientHandler.fetchCardBalance(userId, cardNumber);
-        
+		double balance = cardClientHandler.fetchCardBalance(userId, cardNumber);
 
-        // Check if there is sufficient balance on the card
-        if (balance < amount) {
-            throw new InsufficientFundsException();
-        }
-        
-        return cardClientHandler.updateCardBalance(userId, cardNumber, amount);
-    }
+		// Check if there is sufficient balance on the card
+		if (balance < amount) {
+			throw new InsufficientFundsException();
+		}
 
+		return cardClientHandler.updateCardBalance(userId, cardNumber, amount, TransactionType.DEBIT);
+	}
 
+	@Override
+	public String addFundsToCreditCard(TopUpCreditCardRequestDto topUpCreditCardRequestDto)
+			throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException {
+		// Check whether user is valid or not
+		boolean isUserVerified = userClientHandler.isUserVerified(topUpCreditCardRequestDto.getUserId());
 
+		// Check whether the card exist or not
+		CardType cardType = cardClientHandler.fetchCardType(topUpCreditCardRequestDto.getUserId(),
+				topUpCreditCardRequestDto.getCardNumber());
+
+		// If card type is not credit or card do not exist
+		if (!cardType.equals(CardType.CREDIT_CARD)) {
+			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, "Please enter correct card number");
+		}
+
+		// Check that amount should not be zero
+		checkAmount(topUpCreditCardRequestDto.getAmount());
+
+		// debit amount from the account
+		TransactionDetailsRequestDto transactionDetailsRequestDto = new TransactionDetailsRequestDto();
+		transactionDetailsRequestDto.setAmount(topUpCreditCardRequestDto.getAmount());
+		transactionDetailsRequestDto.setUserId(topUpCreditCardRequestDto.getUserId());
+		transactionDetailsRequestDto.setTransactionType(TransactionType.DEBIT);
+		handleDebitTransaction(transactionDetailsRequestDto);
+		
+		// update in the statement records
+		String transactionResponse = createUserTransactions(transactionDetailsRequestDto);
+
+		// Add amount to the card
+		String response = cardClientHandler.updateCardBalance(topUpCreditCardRequestDto.getUserId(),
+				topUpCreditCardRequestDto.getCardNumber(), topUpCreditCardRequestDto.getAmount(), TransactionType.CREDIT);
+
+		return response +" and "+ transactionResponse;
+	}
 
 }

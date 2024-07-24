@@ -6,6 +6,7 @@ import com.onlineBanking.transaction.exception.DateRangeException;
 import com.onlineBanking.transaction.exception.InsufficientFundsException;
 import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
+import com.onlineBanking.transaction.request.TopUpCreditCardRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 
@@ -25,5 +26,7 @@ public interface TransactionService {
 			TransactionType transactionType) throws TransactionApplicationException, DateRangeException;
 
 	String handleCardTransaction(long userId, long cardNumber, double amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
+
+	String addFundsToCreditCard(TopUpCreditCardRequestDto topUpCreditCardRequestDto) throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException;
 
 }
