@@ -6,6 +6,7 @@ import com.onlineBanking.transaction.exception.DateRangeException;
 import com.onlineBanking.transaction.exception.InsufficientFundsException;
 import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
+import com.onlineBanking.transaction.request.CardTransactionRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 
@@ -24,6 +25,11 @@ public interface TransactionService {
 	TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year,
 			TransactionType transactionType) throws TransactionApplicationException, DateRangeException;
 
-	String handleCardTransaction(long userId, long cardNumber, double amount) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
+	String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
 
+	String addFundsToCreditCard(CardTransactionRequestDto cardTransactionRequestDto) throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException;
+	
+//    TransactionPaginationResponse getTransactionsByCardNumber(int pageNumber, int pageSize, long userId, long cardNumber) 
+//            throws TransactionApplicationException;
+    
 }

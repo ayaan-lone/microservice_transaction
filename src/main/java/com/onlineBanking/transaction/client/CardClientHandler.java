@@ -1,6 +1,7 @@
 package com.onlineBanking.transaction.client;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.entity.CardType;
+import com.onlineBanking.transaction.request.CardTransactionRequestDto;
 
 @Component
 public class CardClientHandler {
@@ -39,17 +41,21 @@ public class CardClientHandler {
 		return response.getBody();
 	}
 	
-	public String updateCardBalance(long userId, long cardNumber, double amount) {
-		
-		String url = cardServiceUrl + "update-balance?userId=" + userId + "&cardNumber=" + cardNumber + "&amount="+amount;
+	public String updateCardBalance(CardTransactionRequestDto cardTransactionRequestDto) {
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
+		String url = cardServiceUrl + "update-balance?userId=" ;
+		HttpEntity<CardTransactionRequestDto> requestEntity = new HttpEntity<>(cardTransactionRequestDto,
+				headers);
 
-
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,null, String.class);
+		ResponseEntity<String> response = restTemplate.exchange(url + "/update-balance", HttpMethod.POST,
+				requestEntity, String.class);
 
 		return response.getBody();
+
+
+
 	}
 
 
