@@ -16,7 +16,7 @@ import com.onlineBanking.transaction.exception.DateRangeException;
 import com.onlineBanking.transaction.exception.InsufficientFundsException;
 import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
-import com.onlineBanking.transaction.request.TopUpCreditCardRequestDto;
+import com.onlineBanking.transaction.request.CardTransactionRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.service.TransactionService;
@@ -86,22 +86,30 @@ public class TransactionController {
 	}
 
 	@PostMapping("/card-transaction")
-	public ResponseEntity<String> handleCardTransaction(@RequestParam(name = "userId", required = true) long userId,
-			@RequestParam(name = "cardNumber", required = true) long cardNumber,
-			@RequestParam(name = "amount", required = true) long amount)
+	public ResponseEntity<String> handleCardTransaction(@RequestBody CardTransactionRequestDto cardTransactionRequestDto)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 
-		String response = transactionService.handleCardTransaction(userId, cardNumber, amount);
+		String response = transactionService.handleCardTransaction(cardTransactionRequestDto);
 		return ResponseEntity.ok(response);
 	}
 
 	// API to add funds in credit card
 	@PostMapping("/add-funds")
 	public ResponseEntity<String> topUpCreditCard(
-			@RequestBody TopUpCreditCardRequestDto topUpCreditCardRequestDto)
+			@RequestBody CardTransactionRequestDto cardTransactionRequestDto)
 			throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException {
-		String response = transactionService.addFundsToCreditCard(topUpCreditCardRequestDto);
+		String response = transactionService.addFundsToCreditCard(cardTransactionRequestDto);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
+	
+//    @GetMapping("/by-card-number")
+//    public TransactionPaginationResponse getTransactionsByCardNumber(
+//            @RequestParam int pageNumber,
+//            @RequestParam int pageSize,
+//            @RequestParam long userId,
+//            @RequestParam long cardNumber) throws TransactionApplicationException {
+//
+//        return transactionService.getTransactionsByCardNumber(pageNumber, pageSize, userId, cardNumber);
+//    }
 
 }

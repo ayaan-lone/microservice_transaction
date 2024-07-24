@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.client.AccountClientHandler;
 import com.onlineBanking.transaction.client.CardClientHandler;
@@ -24,7 +23,7 @@ import com.onlineBanking.transaction.exception.DateRangeException;
 import com.onlineBanking.transaction.exception.InsufficientFundsException;
 import com.onlineBanking.transaction.exception.InvalidAmountException;
 import com.onlineBanking.transaction.exception.TransactionApplicationException;
-import com.onlineBanking.transaction.request.TopUpCreditCardRequestDto;
+import com.onlineBanking.transaction.request.CardTransactionRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.response.TransactionResponseDto;
@@ -335,28 +334,48 @@ public class TransactionServiceImpl implements TransactionService {
 	}
 
 	// CARD
+	
+	
+	
+	
+	
+	
 
 	@Override
-	public String handleCardTransaction(long userId, long cardNumber, double amount)
+	public String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 		// Add a check to verify the user
-		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		long userId = cardTransactionRequestDto.getUserId();
+		long cardNumber = cardTransactionRequestDto.getCardNumber();
+		double amount = cardTransactionRequestDto.getAmount();
+		CardType cardTypeEnum = cardClientHandler.fetchCardType(cardTransactionRequestDto.getUserId(), cardTransactionRequestDto.getCardNumber());
+		Boolean isUserVerified = userClientHandler.isUserVerified(cardTransactionRequestDto.getUserId());
 
 		// Retrieve the cardType using card number
-		CardType cardTypeEnum = cardClientHandler.fetchCardType(userId, cardNumber);
 		System.out.println("this is the card type : " + cardTypeEnum);
 		// Handle transaction based on card type
 
 		if (cardTypeEnum == CardType.DEBIT_CARD) {
+			if(cardTransactionRequestDto.getTransactionTypeEnum().equals(TransactionType.CREDIT)) {
+				throw new TransactionApplicationException(HttpStatus.METHOD_NOT_ALLOWED,ConstantUtils.INVALID_CARD_TYPE);
+			}
 			return handleDebitCardTransaction(userId, cardNumber, cardTypeEnum, amount);
 		}
 		if (cardTypeEnum == CardType.CREDIT_CARD) {
-			return handleCreditCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+			return handleCreditCardTransaction(cardTransactionRequestDto);
 		}
 
 		throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_CARD_TYPE);
 	}
 
+	
+	
+	
+	
+	
+	
+	
+	
 	public String handleDebitCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 		// Prepare TransactionDetailsRequestDto for Debit Card Transaction
@@ -377,41 +396,44 @@ public class TransactionServiceImpl implements TransactionService {
 
 //
 
-	private String handleCreditCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
+	private String handleCreditCardTransaction(CardTransactionRequestDto cardTransactionRequestDto)
 			throws TransactionApplicationException, InsufficientFundsException {
 
-		double balance = cardClientHandler.fetchCardBalance(userId, cardNumber);
-
+		double balance = cardClientHandler.fetchCardBalance(cardTransactionRequestDto.getUserId(), cardTransactionRequestDto.getCardNumber());
+		double amount = cardTransactionRequestDto.getAmount();
 		// Check if there is sufficient balance on the card
+		if(amount<=0) {
+			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST,ConstantUtils.INVALID_TRANSACTION_AMOUNT);
+		}
 		if (balance < amount) {
 			throw new InsufficientFundsException();
 		}
 
-		return cardClientHandler.updateCardBalance(userId, cardNumber, amount, TransactionType.DEBIT);
+		return cardClientHandler.updateCardBalance(cardTransactionRequestDto);
 	}
 
 	@Override
-	public String addFundsToCreditCard(TopUpCreditCardRequestDto topUpCreditCardRequestDto)
+	public String addFundsToCreditCard(CardTransactionRequestDto cardTransactionRequestDto)
 			throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException {
 		// Check whether user is valid or not
-		boolean isUserVerified = userClientHandler.isUserVerified(topUpCreditCardRequestDto.getUserId());
+		boolean isUserVerified = userClientHandler.isUserVerified(cardTransactionRequestDto.getUserId());
 
 		// Check whether the card exist or not
-		CardType cardType = cardClientHandler.fetchCardType(topUpCreditCardRequestDto.getUserId(),
-				topUpCreditCardRequestDto.getCardNumber());
+		CardType cardType = cardClientHandler.fetchCardType(cardTransactionRequestDto.getUserId(),
+				cardTransactionRequestDto.getCardNumber());
 
 		// If card type is not credit or card do not exist
 		if (!cardType.equals(CardType.CREDIT_CARD)) {
-			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, "Please enter correct card number");
+			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST,ConstantUtils.INVALID_CARD_DETAILS);
 		}
 
 		// Check that amount should not be zero
-		checkAmount(topUpCreditCardRequestDto.getAmount());
+		checkAmount(cardTransactionRequestDto.getAmount());
 
 		// debit amount from the account
 		TransactionDetailsRequestDto transactionDetailsRequestDto = new TransactionDetailsRequestDto();
-		transactionDetailsRequestDto.setAmount(topUpCreditCardRequestDto.getAmount());
-		transactionDetailsRequestDto.setUserId(topUpCreditCardRequestDto.getUserId());
+		transactionDetailsRequestDto.setAmount(cardTransactionRequestDto.getAmount());
+		transactionDetailsRequestDto.setUserId(cardTransactionRequestDto.getUserId());
 		transactionDetailsRequestDto.setTransactionType(TransactionType.DEBIT);
 		handleDebitTransaction(transactionDetailsRequestDto);
 		
@@ -419,8 +441,7 @@ public class TransactionServiceImpl implements TransactionService {
 		String transactionResponse = createUserTransactions(transactionDetailsRequestDto);
 
 		// Add amount to the card
-		String response = cardClientHandler.updateCardBalance(topUpCreditCardRequestDto.getUserId(),
-				topUpCreditCardRequestDto.getCardNumber(), topUpCreditCardRequestDto.getAmount(), TransactionType.CREDIT);
+		String response = cardClientHandler.updateCardBalance(cardTransactionRequestDto);
 
 		return response +" and "+ transactionResponse;
 	}

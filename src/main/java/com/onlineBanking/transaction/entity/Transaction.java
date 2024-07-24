@@ -28,6 +28,13 @@ public class Transaction {
 	private TransactionType transactionType;
 	@Column
 	private LocalDateTime dateTime;
+	
+	@Column
+	private long cardNumber;
+	
+	@Enumerated(EnumType.STRING)
+	@Column
+	private CardType cardType;
 
 	public long getId() {
 		return id;
@@ -67,6 +74,21 @@ public class Transaction {
 
 	public void setDateTime(LocalDateTime dateTime) {
 		this.dateTime = dateTime;
+	}
+
+	public CardType getCardType() {
+		return cardType;
+	}
+
+	public void setCardType(CardType cardType) {
+		this.cardType = cardType;
+	}
+
+	public void setCardNumber(long cardNumber) {
+		this.cardNumber = cardNumber;
+	}
+	public long getCardNumber() {
+		return getCardNumber();
 	}
 
 }
