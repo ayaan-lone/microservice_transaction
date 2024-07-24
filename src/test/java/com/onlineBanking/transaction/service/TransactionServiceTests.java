@@ -89,3 +89,48 @@
 //        );
 //    }
 //}
+package com.onlineBanking.transaction.service;
+
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+
+import com.onlineBanking.transaction.entity.TransactionType;
+import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
+import com.onlineBanking.transaction.service.impl.TransactionServiceImpl;
+
+import org.junit.jupiter.api.Test;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+@SpringBootTest
+public class TransactionServiceTests {
+
+    @Autowired
+    private TransactionServiceImpl transactionService;
+
+    @Test
+    public void testSimultaneousTransactions() throws InterruptedException {
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+
+        for (int i = 0; i < 5; i++) {
+            executor.execute(() -> {
+                try {
+                    TransactionDetailsRequestDto requestDto = new TransactionDetailsRequestDto();
+                    requestDto.setUserId(10);
+                    requestDto.setAmount(100.0);
+                    requestDto.setTransactionType(TransactionType.DEBIT);
+                    transactionService.transactionDetails(requestDto);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        executor.shutdown();
+        while (!executor.isTerminated()) {
+            Thread.sleep(100);
+        }
+    }
+}
+

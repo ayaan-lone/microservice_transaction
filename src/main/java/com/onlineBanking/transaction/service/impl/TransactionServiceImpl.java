@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,25 +31,61 @@ import com.onlineBanking.transaction.response.TransactionResponseDto;
 import com.onlineBanking.transaction.service.TransactionService;
 import com.onlineBanking.transaction.util.ConstantUtils;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-	private final RestTemplate restTemplate;
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
+	private final ThreadPoolTaskExecutor taskExecutor;
 
 	@Autowired
 	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate,
-			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler) {
+			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,ThreadPoolTaskExecutor taskExecutor) {
 		this.transactionRepository = transactionRepository;
-		this.restTemplate = restTemplate;
+
 		this.accountClientHandler = accountClientHandler;
 		this.userClientHandler = userClientHandler;
+		this.taskExecutor=taskExecutor;
+	}
+//	@Scheduled(cron = "*/5 * * * * *")
+//	public void simpleScheduledTask() {
+//	    System.out.println("Scheduled task triggered.");
+//	}
+
+	@Scheduled(cron = "*/10 * * * * *")
+	public void triggerSimultaneousCalls() {
+	    for (int i = 0; i < 5; i++) {
+	        taskExecutor.execute(() -> {
+	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
+	            request.setUserId(10);
+	            request.setAmount(10);
+	            request.setTransactionType(TransactionType.DEBIT);
+	            try {
+	                transactionDetails(request);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+	        });
+	    }
 	}
 
-	
-	
+
+	@Transactional
+	public String handleTransactionWithLock(Long userId, Double amount, TransactionType transactionType)
+			throws InsufficientFundsException, InvalidAmountException, TransactionApplicationException {
+		synchronized (userId.toString().intern()) {
+			TransactionDetailsRequestDto requestDto = new TransactionDetailsRequestDto();
+			requestDto.setUserId(userId);
+			requestDto.setAmount(amount);
+			requestDto.setTransactionType(transactionType);
+
+			return transactionDetails(requestDto);
+		}
+	}
+
 	// Method to check whether the transaction type is valid or not
 	private static void isValidTransaction(TransactionType transaction) throws TransactionApplicationException {
 		List<TransactionType> validTransactions = Arrays.stream(TransactionType.values()).collect(Collectors.toList());
@@ -56,40 +94,29 @@ public class TransactionServiceImpl implements TransactionService {
 			throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_TRANSACTION);
 		}
 	}
-	
-	
-	
 
 	// Function to handle all the debit transactions
 	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws InsufficientFundsException {
-		
-		System.out.println("This is the userId: "+transactionDetailsRequestDto.getUserId());
-		System.out.println("This again is the userId: "+transactionDetailsRequestDto.getUserId());
-		
+
+		System.out.println("This is the userId: " + transactionDetailsRequestDto.getUserId());
+		System.out.println("This again is the userId: " + transactionDetailsRequestDto.getUserId());
+
 		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
-		
-		
-		System.out.println("This is the Balance: "+balance);
+
+		System.out.println("This is the Balance: " + balance);
 		if (balance < transactionDetailsRequestDto.getAmount()) {
 			throw new InsufficientFundsException();
 		}
 
 		return accountClientHandler.updateBalance(transactionDetailsRequestDto);
 	}
-	
-	
-	
-	
-	
 
 	// Function to handle all the credit transactions
 	private String handleCreditTransactions(TransactionDetailsRequestDto transaDetailsRequestDto) {
 		return accountClientHandler.updateBalance(transaDetailsRequestDto);
 	}
 
-	
-	
 	// Function to store the transactions in db
 	private String createUserTransactions(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws TransactionApplicationException {
@@ -106,9 +133,6 @@ public class TransactionServiceImpl implements TransactionService {
 
 		return "Transaction is saved in db";
 	}
-	
-	
-	
 
 	// Function to validate that the amount should not be equal to zero
 	private void checkAmount(Double amount) throws InvalidAmountException {
@@ -147,8 +171,6 @@ public class TransactionServiceImpl implements TransactionService {
 		Optional<List<Transaction>> optionalTransaction = transactionRepository.findByUserId(userId);
 		return optionalTransaction.get();
 	}
-	
-	
 
 	// This function converts the transaction into transaction response dto
 	private List<TransactionResponseDto> transactionToResponseDto(List<Transaction> transactionList) {
@@ -161,8 +183,6 @@ public class TransactionServiceImpl implements TransactionService {
 		}).collect(Collectors.toList());
 	}
 
-	
-	
 	// This function converts transactionResponseDto to PaginationResponse
 	private TransactionPaginationResponse transactionResponseToPagination(
 			List<TransactionResponseDto> transactionResponse, int pageNumber, int pageSize) {
@@ -184,44 +204,41 @@ public class TransactionServiceImpl implements TransactionService {
 	}
 
 	@Override
-	public TransactionPaginationResponse getStatement(int pageNumber, int pageSize, TransactionType transactionType, Long userId)
-	        throws TransactionApplicationException {
+	public TransactionPaginationResponse getStatement(int pageNumber, int pageSize, TransactionType transactionType,
+			Long userId) throws TransactionApplicationException {
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    if (transactionList.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
-	    System.out.println("Transaction Type is :"+transactionType);
-	    
-	    
-	    // Filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        transactionList = transactionList.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		if (transactionList.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
+		System.out.println("Transaction Type is :" + transactionType);
 
-	    if (transactionList.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		// Filter transactions based on the transactionType
+		if (transactionType != null) {
+			transactionList = transactionList.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(transactionList);
+		if (transactionList.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(transactionList);
+
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
-
-
 
 	// Function to convert Month Name to Month id
 	private int convertMonthNameToId(String month) throws DateRangeException {
 		// Check whether month name is valid or not
-		
+
 		month = month.toUpperCase();
 		List<String> validMonthName = Arrays.stream(Month.values()).map(Enum::name).map(String::toUpperCase)
 				.collect(Collectors.toList());
@@ -231,159 +248,145 @@ public class TransactionServiceImpl implements TransactionService {
 
 		return Month.valueOf(month).getValue();
 	}
-	
 
 	// Function to get user's monthly statements
 	@Override
-	public TransactionPaginationResponse getMonthlyStatement(int pageNumber, int pageSize, Long userId, MonthEnum month, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    
-	    System.out.println("Monthly Statement API called \n");
+	public TransactionPaginationResponse getMonthlyStatement(int pageNumber, int pageSize, Long userId, MonthEnum month,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		System.out.println("Monthly Statement API called \n");
 
-	    int monthId = month.getValue();
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // If month provided is in greater than the current month throw this exception
-	    if (monthId > LocalDateTime.now().getMonthValue()) {
-	        throw new DateRangeException(ConstantUtils.INVALID_MONTH);
-	    }
+		int monthId = month.getValue();
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		// If month provided is in greater than the current month throw this exception
+		if (monthId > LocalDateTime.now().getMonthValue()) {
+			throw new DateRangeException(ConstantUtils.INVALID_MONTH);
+		}
 
-	    // Filter transactions by month and year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> transaction.getDateTime().getMonthValue() == monthId
-	                    && transaction.getDateTime().getYear() == Year.now().getValue())
-	            .collect(Collectors.toList());
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    System.out.println("Filtered Monthly Transaction: " + filteredTransaction);
+		// Filter transactions by month and year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> transaction.getDateTime().getMonthValue() == monthId
+						&& transaction.getDateTime().getYear() == Year.now().getValue())
+				.collect(Collectors.toList());
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		System.out.println("Filtered Monthly Transaction: " + filteredTransaction);
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
+
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
-
-	
-	
-	
-	
 	// Function to return the quarter of the year if the date is given
 	private static int getQuarter(LocalDateTime date) {
 		int month = date.getMonthValue();
 		return (month - 1) / 3 + 1;
 	}
 
-	
-	
 	// Function to get user's quarterly statements
 	@Override
-	public TransactionPaginationResponse getQuaterlyStatement(int pageNumber, int pageSize, Long userId, int quarter, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    System.out.println("Quarterly Statement API called \n");
+	public TransactionPaginationResponse getQuaterlyStatement(int pageNumber, int pageSize, Long userId, int quarter,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
+		System.out.println("Quarterly Statement API called \n");
 
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // Check whether the quarter is greater than the current quarter
-	    if (quarter > getQuarter(LocalDateTime.now())) {
-	        throw new DateRangeException("Provided quarter: " + quarter + " is greater than the current quarter");
-	    }
+		// Check whether the quarter is greater than the current quarter
+		if (quarter > getQuarter(LocalDateTime.now())) {
+			throw new DateRangeException("Provided quarter: " + quarter + " is greater than the current quarter");
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    // Filter transactions by quarter and year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> getQuarter(transaction.getDateTime()) == quarter
-	                    && transaction.getDateTime().getYear() == Year.now().getValue())
-	            .collect(Collectors.toList());
+		// Filter transactions by quarter and year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> getQuarter(transaction.getDateTime()) == quarter
+						&& transaction.getDateTime().getYear() == Year.now().getValue())
+				.collect(Collectors.toList());
 
-	    System.out.println("Filtered Quarterly Transaction: " + filteredTransaction);
+		System.out.println("Filtered Quarterly Transaction: " + filteredTransaction);
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
-	
-	
-	
-	
 	@Override
-	public TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year, TransactionType transactionType)
-	        throws TransactionApplicationException, DateRangeException {
-	    System.out.println("Yearly Statement API called \n");
-	    Boolean isUserVerified = userClientHandler.isUserVerified(userId);
-	    if (!isUserVerified) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-	    }
+	public TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year,
+			TransactionType transactionType) throws TransactionApplicationException, DateRangeException {
+		System.out.println("Yearly Statement API called \n");
+		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+		if (!isUserVerified) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+		}
 
-	    // Check whether the given year is greater than the current year
-	    if (year > LocalDateTime.now().getYear()) {
-	        throw new DateRangeException(ConstantUtils.INVALID_YEAR);
-	    }
+		// Check whether the given year is greater than the current year
+		if (year > LocalDateTime.now().getYear()) {
+			throw new DateRangeException(ConstantUtils.INVALID_YEAR);
+		}
 
-	    List<Transaction> transactionList = isUserPersist(userId);
+		List<Transaction> transactionList = isUserPersist(userId);
 
-	    // Filter transactions by year
-	    List<Transaction> filteredTransaction = transactionList.stream()
-	            .filter(transaction -> transaction.getDateTime().getYear() == year)
-	            .collect(Collectors.toList());
+		// Filter transactions by year
+		List<Transaction> filteredTransaction = transactionList.stream()
+				.filter(transaction -> transaction.getDateTime().getYear() == year).collect(Collectors.toList());
 
-	    System.out.println("Filtered Yearly List : " + filteredTransaction);
+		System.out.println("Filtered Yearly List : " + filteredTransaction);
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    // Further filter transactions based on the transactionType
-	    if (transactionType != null) {
-	        filteredTransaction = filteredTransaction.stream()
-	                .filter(transaction -> transactionType.equals(transaction.getTransactionType()))
-	                .collect(Collectors.toList());
-	    }
+		// Further filter transactions based on the transactionType
+		if (transactionType != null) {
+			filteredTransaction = filteredTransaction.stream()
+					.filter(transaction -> transactionType.equals(transaction.getTransactionType()))
+					.collect(Collectors.toList());
+		}
 
-	    if (filteredTransaction.isEmpty()) {
-	        throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
-	    }
+		if (filteredTransaction.isEmpty()) {
+			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.TRANSACTIONS_NOT_FOUND);
+		}
 
-	    List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
-	    return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
+		List<TransactionResponseDto> transactionResponse = transactionToResponseDto(filteredTransaction);
+		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
-
 
 }
