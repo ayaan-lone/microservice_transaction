@@ -8,6 +8,12 @@ public class ConstantUtils {
 	public static final String USER_NOT_EXIST = "No User with this id Exists";
 	public static final String INVALID_MONTH = "Month name should be before current month or the current month itself";
 	public static final String TRANSACTIONS_NOT_FOUND = "No Transactions Found";
+	public static final String TRANSACTION_FAILED = "TRANSACTION FAILED";
+	public static final String INSUFFICIENT_BALANCE = "Insufficient Balance";
+	public static final String INVALID_CARD_TYPE = "Invalid Card Type";
+	public static final String INVALID_CARD_DETAILS =  "Please enter correct card number";
+	public static final String INVALID_TRANSACTION_TYPE = "Method Not Allowed for this Card Type, Please select a Credit Card";
+	public static final String INVALID_TRANSACTION_AMOUNT = "Please a valid amount";
 	
 
 }
