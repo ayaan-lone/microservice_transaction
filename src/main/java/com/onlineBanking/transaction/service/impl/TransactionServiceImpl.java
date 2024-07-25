@@ -1,6 +1,7 @@
 package com.onlineBanking.transaction.service.impl;
 
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.Year;
 import java.util.Arrays;
 import java.util.List;
@@ -9,7 +10,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import com.onlineBanking.transaction.client.AccountClientHandler;
 import com.onlineBanking.transaction.client.CardClientHandler;
@@ -30,25 +34,78 @@ import com.onlineBanking.transaction.response.TransactionResponseDto;
 import com.onlineBanking.transaction.service.TransactionService;
 import com.onlineBanking.transaction.util.ConstantUtils;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-
+//<<<<<<< HEAD
+//
+//	private final AccountClientHandler accountClientHandler;
+//	private final UserClientHandler userClientHandler;
+//	
+//
+//	@Autowired
+//	public TransactionServiceImpl(TransactionRepository transactionRepository,
+//
+//			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,
+//			CardClientHandler cardClientHandler) {
+//
+//		this.transactionRepository = transactionRepository;
+//		this.accountClientHandler = accountClientHandler;
+//		this.userClientHandler = userClientHandler;
+//		
+//=======
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
 	private final CardClientHandler cardClientHandler;
+	private final ThreadPoolTaskExecutor taskExecutor;
 
 	@Autowired
-	public TransactionServiceImpl(TransactionRepository transactionRepository,
-
-			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,
-			CardClientHandler cardClientHandler) {
-
+	public TransactionServiceImpl(TransactionRepository transactionRepository, RestTemplate restTemplate, CardClientHandler cardClientHandler, 
+			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,ThreadPoolTaskExecutor taskExecutor) {
 		this.transactionRepository = transactionRepository;
+		this.cardClientHandler = cardClientHandler;
 		this.accountClientHandler = accountClientHandler;
 		this.userClientHandler = userClientHandler;
-		this.cardClientHandler = cardClientHandler;
+		this.taskExecutor=taskExecutor;
+	}
+//	@Scheduled(cron = "*/5 * * * * *")
+//	public void simpleScheduledTask() {
+//	    System.out.println("Scheduled task triggered.");
+//	}
+
+	@Scheduled(cron = "*/10 * * * * *")
+	public void triggerSimultaneousCalls() {
+	    for (int i = 0; i < 5; i++) {
+	        taskExecutor.execute(() -> {
+	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
+	            request.setUserId(10);
+	            request.setAmount(10);
+	            request.setTransactionType(TransactionType.DEBIT);
+	            try {
+	                transactionDetails(request);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+	        });
+	    }
+	}
+
+
+	@Transactional
+	public String handleTransactionWithLock(Long userId, Double amount, TransactionType transactionType)
+			throws InsufficientFundsException, InvalidAmountException, TransactionApplicationException {
+		synchronized (userId.toString().intern()) {
+			TransactionDetailsRequestDto requestDto = new TransactionDetailsRequestDto();
+			requestDto.setUserId(userId);
+			requestDto.setAmount(amount);
+			requestDto.setTransactionType(transactionType);
+
+			return transactionDetails(requestDto);
+		}
+//>>>>>>> aryan
 	}
 
 	// Method to check whether the transaction type is valid or not
@@ -64,7 +121,13 @@ public class TransactionServiceImpl implements TransactionService {
 	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws InsufficientFundsException {
 
+
+		System.out.println("This is the userId: " + transactionDetailsRequestDto.getUserId());
+		System.out.println("This again is the userId: " + transactionDetailsRequestDto.getUserId());
+
 		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
+
+		System.out.println("This is the Balance: " + balance);
 
 		if (balance < transactionDetailsRequestDto.getAmount()) {
 			throw new InsufficientFundsException();
@@ -196,6 +259,20 @@ public class TransactionServiceImpl implements TransactionService {
 		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
+	// Function to convert Month Name to Month id
+		private int convertMonthNameToId(String month) throws DateRangeException {
+			// Check whether month name is valid or not
+
+			month = month.toUpperCase();
+			List<String> validMonthName = Arrays.stream(Month.values()).map(Enum::name).map(String::toUpperCase)
+					.collect(Collectors.toList());
+			if (!validMonthName.contains(month)) {
+				throw new DateRangeException("Month provided: " + month + " is not a valid month");
+			}
+
+			return Month.valueOf(month).getValue();
+		}
+		
 	// Function to get user's monthly statements
 	@Override
 	public TransactionPaginationResponse getMonthlyStatement(int pageNumber, int pageSize, Long userId, MonthEnum month,
@@ -336,11 +413,6 @@ public class TransactionServiceImpl implements TransactionService {
 		return transactionResponseToPagination(transactionResponse, pageNumber, pageSize);
 	}
 
-	// CARD
-	
-	
-	
-	
 	
 	
 
@@ -448,5 +520,6 @@ public class TransactionServiceImpl implements TransactionService {
 
 		return response +" and "+ transactionResponse;
 	}
+
 
 }
