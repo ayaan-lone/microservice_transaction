@@ -40,23 +40,7 @@ import jakarta.transaction.Transactional;
 public class TransactionServiceImpl implements TransactionService {
 
 	private final TransactionRepository transactionRepository;
-//<<<<<<< HEAD
-//
-//	private final AccountClientHandler accountClientHandler;
-//	private final UserClientHandler userClientHandler;
-//	
-//
-//	@Autowired
-//	public TransactionServiceImpl(TransactionRepository transactionRepository,
-//
-//			AccountClientHandler accountClientHandler, UserClientHandler userClientHandler,
-//			CardClientHandler cardClientHandler) {
-//
-//		this.transactionRepository = transactionRepository;
-//		this.accountClientHandler = accountClientHandler;
-//		this.userClientHandler = userClientHandler;
-//		
-//=======
+
 	private final AccountClientHandler accountClientHandler;
 	private final UserClientHandler userClientHandler;
 	private final CardClientHandler cardClientHandler;
@@ -81,8 +65,8 @@ public class TransactionServiceImpl implements TransactionService {
 	    for (int i = 0; i < 5; i++) {
 	        taskExecutor.execute(() -> {
 	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
-	            request.setUserId(10);
-	            request.setAmount(10);
+	            request.setUserId(1);
+	            request.setAmount(1);
 	            request.setTransactionType(TransactionType.DEBIT);
 	            try {
 	                transactionDetails(request);
@@ -105,7 +89,7 @@ public class TransactionServiceImpl implements TransactionService {
 
 			return transactionDetails(requestDto);
 		}
-//>>>>>>> aryan
+
 	}
 
 	// Method to check whether the transaction type is valid or not
