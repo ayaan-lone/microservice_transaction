@@ -60,22 +60,22 @@ public class TransactionServiceImpl implements TransactionService {
 //	    System.out.println("Scheduled task triggered.");
 //	}
 
-	@Scheduled(cron = "*/10 * * * * *")
-	public void triggerSimultaneousCalls() {
-	    for (int i = 0; i < 5; i++) {
-	        taskExecutor.execute(() -> {
-	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
-	            request.setUserId(1);
-	            request.setAmount(1);
-	            request.setTransactionType(TransactionType.DEBIT);
-	            try {
-	                transactionDetails(request);
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	            }
-	        });
-	    }
-	}
+//	@Scheduled(cron = "*/10 * * * * *")
+//	public void triggerSimultaneousCalls() {
+//	    for (int i = 0; i < 5; i++) {
+//	        taskExecutor.execute(() -> {
+//	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
+//	            request.setUserId(1);
+//	            request.setAmount(1);
+//	            request.setTransactionType(TransactionType.DEBIT);
+//	            try {
+//	                transactionDetails(request);
+//	            } catch (Exception e) {
+//	                e.printStackTrace();
+//	            }
+//	        });
+//	    }
+//	}
 
 
 	@Transactional
