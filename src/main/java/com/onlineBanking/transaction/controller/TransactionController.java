@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,9 @@ import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 import com.onlineBanking.transaction.service.TransactionService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/v1")
 public class TransactionController {
@@ -30,66 +34,78 @@ public class TransactionController {
 	public TransactionController(TransactionService transactionService) {
 		this.transactionService = transactionService;
 	}
+	
 
 	@PostMapping("/transaction")
-	ResponseEntity<String> transactionDetails(@RequestBody TransactionDetailsRequestDto transactionDetailsDto)
+	ResponseEntity<String> transactionDetails(@Valid @RequestHeader("Authorization") String token,
+			@RequestBody TransactionDetailsRequestDto transactionDetailsDto, HttpServletRequest request)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
-		String response = transactionService.transactionDetails(transactionDetailsDto);
+		Long userId = (Long) request.getAttribute("userId");
+		String response = transactionService.transactionDetails(transactionDetailsDto,token, userId);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/statement/{userId}")
+	@GetMapping("/statement/")
 	public ResponseEntity<TransactionPaginationResponse> getStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
-			@RequestParam(name = "transactionType", required = false) TransactionType transactionType,
-			@PathVariable Long userId) throws TransactionApplicationException {
+			@RequestParam(name = "transactionType", required = false) TransactionType transactionType,HttpServletRequest request) throws TransactionApplicationException {
+		 Long userId = (Long) request.getAttribute("userId");
 		TransactionPaginationResponse response = transactionService.getStatement(pageNumber, pageSize, transactionType,
 				userId);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/monthly-statement/{userId}/{month}")
+	@GetMapping("/monthly-statement/{month}")
 	public ResponseEntity<TransactionPaginationResponse> getMonthlyStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
 			@RequestParam(name = "transactionType", required = false) TransactionType transactionType,
-			@PathVariable Long userId, @PathVariable MonthEnum month)
+			@PathVariable MonthEnum month,HttpServletRequest request)
 			throws TransactionApplicationException, DateRangeException {
+		 Long userId = (Long) request.getAttribute("userId");
 		TransactionPaginationResponse response = transactionService.getMonthlyStatement(pageNumber, pageSize, userId,
 				month, transactionType);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/quaterly-statement/{userId}/{quarter}")
+	@GetMapping("/quaterly-statement/{quarter}")
 	public ResponseEntity<TransactionPaginationResponse> getQuaterlyStatement(
 			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
 			@RequestParam(name = "transactionType", required = false) TransactionType transactionType,
-			@PathVariable Long userId, @PathVariable int quarter)
+			@PathVariable int quarter,HttpServletRequest request)
+	
 			throws TransactionApplicationException, DateRangeException {
+		 Long userId = (Long) request.getAttribute("userId");
 		TransactionPaginationResponse response = transactionService.getQuaterlyStatement(pageNumber, pageSize, userId,
 				quarter, transactionType);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@GetMapping("/yearly-statement/{userId}/{year}")
+	@GetMapping("/yearly-statement/{year}")
 	public ResponseEntity<TransactionPaginationResponse> getYearlyStatement(
-			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
-			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
-			@RequestParam(name = "transactionType", required = false) TransactionType transactionType,
-			@PathVariable Long userId, @PathVariable int year)
-			throws TransactionApplicationException, DateRangeException {
-		TransactionPaginationResponse response = transactionService.getYearlyStatement(pageNumber, pageSize, userId,
-				year, transactionType);
-		return ResponseEntity.status(HttpStatus.OK).body(response);
+	        @RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+	        @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
+	        @RequestParam(name = "transactionType", required = false) TransactionType transactionType,
+	        @PathVariable(name = "year") Integer year,
+	        HttpServletRequest request) throws TransactionApplicationException, DateRangeException {
+	    
+	    // Extract userId from the request attribute
+	    Long userId = (Long) request.getAttribute("userId");
+		    
+	    TransactionPaginationResponse response = transactionService.getYearlyStatement(pageNumber, pageSize, userId, year, transactionType);
+	    return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
-	@PostMapping("/card-transaction")
-	public ResponseEntity<String> handleCardTransaction(@RequestBody CardTransactionRequestDto cardTransactionRequestDto)
-			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 
-		String response = transactionService.handleCardTransaction(cardTransactionRequestDto);
+	@PostMapping("/card-transaction")
+	public ResponseEntity<String> handleCardTransaction(@Valid @RequestHeader("Authorization") String token,
+			@RequestBody CardTransactionRequestDto cardTransactionRequestDto, HttpServletRequest request)
+			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+		Long userId = (Long) request.getAttribute("userId");
+
+		String response = transactionService.handleCardTransaction(cardTransactionRequestDto,token, userId);
 		return ResponseEntity.ok(response);
 	}
 

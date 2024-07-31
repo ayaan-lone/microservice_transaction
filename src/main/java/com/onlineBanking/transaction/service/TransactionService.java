@@ -10,9 +10,11 @@ import com.onlineBanking.transaction.request.CardTransactionRequestDto;
 import com.onlineBanking.transaction.request.TransactionDetailsRequestDto;
 import com.onlineBanking.transaction.response.TransactionPaginationResponse;
 
+import jakarta.validation.Valid;
+
 public interface TransactionService {
 	
-	String transactionDetails(TransactionDetailsRequestDto transactionDetailsDto) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
+	String transactionDetails(TransactionDetailsRequestDto transactionDetailsDto, String token, Long userId) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
 	
 	TransactionPaginationResponse getStatement(int pageNumber, int pageSize, TransactionType transactionType, Long userId) throws TransactionApplicationException;
 
@@ -25,7 +27,7 @@ public interface TransactionService {
 	TransactionPaginationResponse getYearlyStatement(int pageNumber, int pageSize, Long userId, int year,
 			TransactionType transactionType) throws TransactionApplicationException, DateRangeException;
 
-	String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
+	String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto, @Valid String token, Long userId) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
 
 	String addFundsToCreditCard(CardTransactionRequestDto cardTransactionRequestDto) throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException;
 	

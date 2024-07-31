@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -55,42 +54,21 @@ public class TransactionServiceImpl implements TransactionService {
 		this.userClientHandler = userClientHandler;
 		this.taskExecutor=taskExecutor;
 	}
-//	@Scheduled(cron = "*/5 * * * * *")
-//	public void simpleScheduledTask() {
-//	    System.out.println("Scheduled task triggered.");
+
+
+//	@Transactional
+//	public String handleTransactionWithLock(Long userId, Double amount, TransactionType transactionType)
+//			throws InsufficientFundsException, InvalidAmountException, TransactionApplicationException {
+//		synchronized (userId.toString().intern()) {
+//			TransactionDetailsRequestDto requestDto = new TransactionDetailsRequestDto();
+//			requestDto.setUserId(userId);
+//			requestDto.setAmount(amount);
+//			requestDto.setTransactionType(transactionType);
+//
+//			return transactionDetails(requestDto);
+//		}
+//
 //	}
-
-//	@Scheduled(cron = "*/10 * * * * *")
-//	public void triggerSimultaneousCalls() {
-//	    for (int i = 0; i < 5; i++) {
-//	        taskExecutor.execute(() -> {
-//	            TransactionDetailsRequestDto request = new TransactionDetailsRequestDto();
-//	            request.setUserId(1);
-//	            request.setAmount(1);
-//	            request.setTransactionType(TransactionType.DEBIT);
-//	            try {
-//	                transactionDetails(request);
-//	            } catch (Exception e) {
-//	                e.printStackTrace();
-//	            }
-//	        });
-//	    }
-//	}
-
-
-	@Transactional
-	public String handleTransactionWithLock(Long userId, Double amount, TransactionType transactionType)
-			throws InsufficientFundsException, InvalidAmountException, TransactionApplicationException {
-		synchronized (userId.toString().intern()) {
-			TransactionDetailsRequestDto requestDto = new TransactionDetailsRequestDto();
-			requestDto.setUserId(userId);
-			requestDto.setAmount(amount);
-			requestDto.setTransactionType(transactionType);
-
-			return transactionDetails(requestDto);
-		}
-
-	}
 
 	// Method to check whether the transaction type is valid or not
 	private static void isValidTransaction(TransactionType transaction) throws TransactionApplicationException {
@@ -101,15 +79,17 @@ public class TransactionServiceImpl implements TransactionService {
 		}
 	}
 
+	
+	
+	
 	// Function to handle all the debit transactions
-	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto)
+	private String handleDebitTransaction(TransactionDetailsRequestDto transactionDetailsRequestDto, String token, Long userId)
 			throws InsufficientFundsException {
 
+		transactionDetailsRequestDto.setUserId(userId);
+		System.out.println("This is the userId: " + userId);
 
-		System.out.println("This is the userId: " + transactionDetailsRequestDto.getUserId());
-		System.out.println("This again is the userId: " + transactionDetailsRequestDto.getUserId());
-
-		Double balance = accountClientHandler.getBalance(transactionDetailsRequestDto.getUserId());
+		Double balance = accountClientHandler.getBalance(userId);
 
 		System.out.println("This is the Balance: " + balance);
 
@@ -117,14 +97,22 @@ public class TransactionServiceImpl implements TransactionService {
 			throw new InsufficientFundsException();
 		}
 
-		return accountClientHandler.updateBalance(transactionDetailsRequestDto);
+		return accountClientHandler.updateBalance(transactionDetailsRequestDto,token);
 	}
 
+	
+	
+	
 	// Function to handle all the credit transactions
-	private String handleCreditTransactions(TransactionDetailsRequestDto transaDetailsRequestDto) {
-		return accountClientHandler.updateBalance(transaDetailsRequestDto);
+	private String handleCreditTransactions(TransactionDetailsRequestDto transaDetailsRequestDto,String token, Long userId) {
+		transaDetailsRequestDto.setUserId(userId);
+		return accountClientHandler.updateBalance(transaDetailsRequestDto,token);
 	}
 
+	
+	
+	
+	
 	// Function to store the transactions in db
 	private String createUserTransactions(TransactionDetailsRequestDto transactionDetailsRequestDto)
 			throws TransactionApplicationException {
@@ -151,14 +139,18 @@ public class TransactionServiceImpl implements TransactionService {
 
 	// Function to validate the transaction and update the balance
 	@Override
-	public String transactionDetails(TransactionDetailsRequestDto transactionDetialsRequestDto)
+	public String transactionDetails(TransactionDetailsRequestDto transactionDetialsRequestDto, String token, Long userId)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
+		
+		
 
 		// First check whether the user exists or not and if user account is not deleted
-		Boolean isUserVerified = userClientHandler.isUserVerified(transactionDetialsRequestDto.getUserId());
-		if (!isUserVerified) {
-			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
-		}
+//		Boolean isUserVerified = userClientHandler.isUserVerified(userId);
+//		if (!isUserVerified) {
+//			throw new TransactionApplicationException(HttpStatus.NOT_FOUND, ConstantUtils.USER_NOT_EXIST);
+//		}
+		
+		
 		// Check whether the transactionType is correct or not
 		isValidTransaction(transactionDetialsRequestDto.getTransactionType());
 
@@ -166,8 +158,8 @@ public class TransactionServiceImpl implements TransactionService {
 		checkAmount(transactionDetialsRequestDto.getAmount());
 
 		String response = transactionDetialsRequestDto.getTransactionType().equals(TransactionType.DEBIT)
-				? handleDebitTransaction(transactionDetialsRequestDto)
-				: handleCreditTransactions(transactionDetialsRequestDto);
+				? handleDebitTransaction(transactionDetialsRequestDto,token,userId)
+				: handleCreditTransactions(transactionDetialsRequestDto,token, userId);
 		String transactionResponse = createUserTransactions(transactionDetialsRequestDto);
 
 		return response + " and " + transactionResponse;
@@ -401,10 +393,11 @@ public class TransactionServiceImpl implements TransactionService {
 	
 
 	@Override
-	public String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto)
+	public String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto, String token, Long userId)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 		// Add a check to verify the user
-		long userId = cardTransactionRequestDto.getUserId();
+//		long userId = cardTransactionRequestDto.getUserId();
+		
 		long cardNumber = cardTransactionRequestDto.getCardNumber();
 		double amount = cardTransactionRequestDto.getAmount();
 		CardType cardTypeEnum = cardClientHandler.fetchCardType(cardTransactionRequestDto.getUserId(), cardTransactionRequestDto.getCardNumber());
@@ -418,10 +411,10 @@ public class TransactionServiceImpl implements TransactionService {
 			if(cardTransactionRequestDto.getTransactionTypeEnum().equals(TransactionType.CREDIT)) {
 				throw new TransactionApplicationException(HttpStatus.METHOD_NOT_ALLOWED,ConstantUtils.INVALID_CARD_TYPE);
 			}
-			return handleDebitCardTransaction(userId, cardNumber, cardTypeEnum, amount);
+			return handleDebitCardTransaction(token,userId, cardNumber, cardTypeEnum, amount);
 		}
 		if (cardTypeEnum == CardType.CREDIT_CARD) {
-			return handleCreditCardTransaction(cardTransactionRequestDto);
+			return handleCreditCardTransaction(cardTransactionRequestDto, token, userId);
 		}
 
 		throw new TransactionApplicationException(HttpStatus.BAD_REQUEST, ConstantUtils.INVALID_CARD_TYPE);
@@ -435,7 +428,7 @@ public class TransactionServiceImpl implements TransactionService {
 	
 	
 	
-	public String handleDebitCardTransaction(long userId, long cardNumber, CardType cardTypeEnum, double amount)
+	public String handleDebitCardTransaction(String token, long userId, long cardNumber, CardType cardTypeEnum, double amount)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 		// Prepare TransactionDetailsRequestDto for Debit Card Transaction
 
@@ -443,7 +436,7 @@ public class TransactionServiceImpl implements TransactionService {
 		transactionRequestDto.setUserId(userId);
 		transactionRequestDto.setAmount(amount);
 		transactionRequestDto.setTransactionType(TransactionType.DEBIT);
-		String response = transactionDetails(transactionRequestDto);
+		String response = transactionDetails(transactionRequestDto, token, userId);
 
 		// Check if the response is successful and handle it accordingly
 		if (response != null) {
@@ -455,7 +448,7 @@ public class TransactionServiceImpl implements TransactionService {
 
 //
 
-	private String handleCreditCardTransaction(CardTransactionRequestDto cardTransactionRequestDto)
+	private String handleCreditCardTransaction(CardTransactionRequestDto cardTransactionRequestDto,String token, long userId)
 			throws TransactionApplicationException, InsufficientFundsException {
 
 		double balance = cardClientHandler.fetchCardBalance(cardTransactionRequestDto.getUserId(), cardTransactionRequestDto.getCardNumber());
@@ -494,7 +487,7 @@ public class TransactionServiceImpl implements TransactionService {
 		transactionDetailsRequestDto.setAmount(cardTransactionRequestDto.getAmount());
 		transactionDetailsRequestDto.setUserId(cardTransactionRequestDto.getUserId());
 		transactionDetailsRequestDto.setTransactionType(TransactionType.DEBIT);
-		handleDebitTransaction(transactionDetailsRequestDto);
+		handleDebitTransaction(transactionDetailsRequestDto, null, null);
 		
 		// update in the statement records
 		String transactionResponse = createUserTransactions(transactionDetailsRequestDto);

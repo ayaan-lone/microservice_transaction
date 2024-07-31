@@ -7,6 +7,17 @@ public class TransactionDetailsRequestDto {
 	private long userId;
 	private double amount;
 	private TransactionType transactionType;
+	
+	private long cardNumber;
+	
+
+	public long getCardNumber() {
+		return cardNumber;
+	}
+
+	public void setCardNumber(long cardNumber) {
+		this.cardNumber = cardNumber;
+	}
 
 	public long getUserId() {
 		return userId;

@@ -25,12 +25,18 @@ public class AccountClientHandler {
 		this.restTemplate = restTemplate;
 	}
 
-	public String updateBalance(TransactionDetailsRequestDto transactionDetailsRequestDto) {
+	public String updateBalance(TransactionDetailsRequestDto transactionDetailsRequestDto, String token) {
+		
+		
 		HttpHeaders headers = new HttpHeaders();
+		
+	    headers.set("Authorization", token);
+	    
+	    System.out.println("This is my Token: "+token);
+	    
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
-		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto,
-				headers);
+		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto, headers);
 
 		ResponseEntity<String> response = restTemplate.exchange(accountUrl + "/update-balance", HttpMethod.POST,
 				requestEntity, String.class);
