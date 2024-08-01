@@ -29,7 +29,7 @@ public interface TransactionService {
 
 	String handleCardTransaction(CardTransactionRequestDto cardTransactionRequestDto, @Valid String token, Long userId) throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException;
 
-	String addFundsToCreditCard(CardTransactionRequestDto cardTransactionRequestDto) throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException;
+	String addFundsToCreditCard(CardTransactionRequestDto cardTransactionRequestDto, Long userId) throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException;
 	
 //    TransactionPaginationResponse getTransactionsByCardNumber(int pageNumber, int pageSize, long userId, long cardNumber) 
 //            throws TransactionApplicationException;

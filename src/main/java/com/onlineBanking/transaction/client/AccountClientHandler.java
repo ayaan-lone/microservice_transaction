@@ -26,17 +26,17 @@ public class AccountClientHandler {
 	}
 
 	public String updateBalance(TransactionDetailsRequestDto transactionDetailsRequestDto, String token) {
-		
-		
-		HttpHeaders headers = new HttpHeaders();
-		
-	    headers.set("Authorization", token);
-	    
-	    System.out.println("This is my Token: "+token);
-	    
-		headers.setContentType(MediaType.APPLICATION_JSON);
 
-		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto, headers);
+		HttpHeaders headers = new HttpHeaders();
+
+		headers.set("Authorization", token);
+
+		System.out.println("This is my Token: " + token);
+//	    
+//		headers.setContentType(MediaType.APPLICATION_JSON);
+
+		HttpEntity<TransactionDetailsRequestDto> requestEntity = new HttpEntity<>(transactionDetailsRequestDto,
+				headers);
 
 		ResponseEntity<String> response = restTemplate.exchange(accountUrl + "/update-balance", HttpMethod.POST,
 				requestEntity, String.class);
@@ -44,10 +44,15 @@ public class AccountClientHandler {
 		return response.getBody();
 	}
 
-	public Double getBalance(Long userId) {
-	    String url = accountUrl + "/balance?userId=" + userId; 
-	    ResponseEntity<Double> response = restTemplate.exchange(url, HttpMethod.GET, null, Double.class);
-	    return response.getBody();
+	public Double getBalance(Long userId, String token) {
+
+		HttpHeaders headers = new HttpHeaders();
+
+		headers.set("Authorization", token);
+		HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
+		String url = accountUrl + "/balance?userId=" + userId;
+		ResponseEntity<Double> response = restTemplate.exchange(url, HttpMethod.GET, httpEntity, Double.class);
+		return response.getBody();
 	}
 
 }

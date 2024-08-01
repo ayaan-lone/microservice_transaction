@@ -38,10 +38,10 @@ public class TransactionController {
 
 	@PostMapping("/transaction")
 	ResponseEntity<String> transactionDetails(@Valid @RequestHeader("Authorization") String token,
-			@RequestBody TransactionDetailsRequestDto transactionDetailsDto, HttpServletRequest request)
+			@RequestBody TransactionDetailsRequestDto transactionDetailsRequestDto, HttpServletRequest request)
 			throws TransactionApplicationException, InsufficientFundsException, InvalidAmountException {
 		Long userId = (Long) request.getAttribute("userId");
-		String response = transactionService.transactionDetails(transactionDetailsDto,token, userId);
+		String response = transactionService.transactionDetails(transactionDetailsRequestDto,token, userId);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 
@@ -111,10 +111,11 @@ public class TransactionController {
 
 	// API to add funds in credit card
 	@PostMapping("/add-funds")
-	public ResponseEntity<String> topUpCreditCard(
-			@RequestBody CardTransactionRequestDto cardTransactionRequestDto)
+	public ResponseEntity<String> topUpCreditCard(@Valid @RequestHeader("Authorization") String token,
+			@RequestBody CardTransactionRequestDto cardTransactionRequestDto, HttpServletRequest request)
 			throws TransactionApplicationException, InvalidAmountException, InsufficientFundsException {
-		String response = transactionService.addFundsToCreditCard(cardTransactionRequestDto);
+		Long userId = (Long) request.getAttribute("userId");
+		String response = transactionService.addFundsToCreditCard(cardTransactionRequestDto, userId);
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
 	
